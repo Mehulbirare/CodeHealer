@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import type { Project } from '../types';
 
 interface Props {
@@ -12,24 +13,37 @@ interface Props {
 
 export function ProjectSelector({ projects, activeProjectId, onSwitch, onCreate, onRename, onDelete }: Props) {
   const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState('');
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
-  const containerRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const activeProject = projects.find(p => p.id === activeProjectId) ?? projects[0];
+
+  const handleOpen = () => {
+    if (buttonRef.current) {
+      const r = buttonRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 6, left: r.left });
+    }
+    setOpen(o => !o);
+  };
 
   useEffect(() => {
     if (!open) return;
-    const handleOutside = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node;
+      const inButton = buttonRef.current?.contains(target);
+      const inDropdown = dropdownRef.current?.contains(target);
+      if (!inButton && !inDropdown) {
         setOpen(false);
         setCreating(false);
         setRenamingId(null);
       }
     };
-    document.addEventListener('mousedown', handleOutside);
-    return () => document.removeEventListener('mousedown', handleOutside);
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
   }, [open]);
 
   const handleCreate = () => {
@@ -53,9 +67,10 @@ export function ProjectSelector({ projects, activeProjectId, onSwitch, onCreate,
   };
 
   return (
-    <div ref={containerRef} className="relative">
+    <div>
       <button
-        onClick={() => setOpen(o => !o)}
+        ref={buttonRef}
+        onClick={handleOpen}
         className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
           open
             ? 'bg-white/10 border-neon-cyan/30 text-gray-200'
@@ -71,8 +86,13 @@ export function ProjectSelector({ projects, activeProjectId, onSwitch, onCreate,
         </svg>
       </button>
 
-      {open && (
-        <div className="absolute top-full left-0 mt-1.5 w-60 bg-gray-900 border border-white/10 rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
+      {open && createPortal(
+        <div
+          ref={dropdownRef}
+          style={{ top: pos.top, left: pos.left }}
+          className="fixed w-60 bg-gray-900 border border-white/10 rounded-xl shadow-2xl z-[9999] py-1.5"
+        >
+
           <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-wider text-gray-600">Projects</p>
 
           {projects.map((project) => (
@@ -167,7 +187,8 @@ export function ProjectSelector({ projects, activeProjectId, onSwitch, onCreate,
               </button>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

@@ -124,7 +124,7 @@ function App() {
   const allFixes = result ? [...result.errors, ...result.fixes] : [];
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 overflow-hidden">
+    <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
       {/* Header */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
