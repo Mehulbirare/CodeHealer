@@ -1,76 +1,282 @@
-# FixCode
+<div align="center">
 
-A fully client-side web application that detects and automatically fixes syntax errors and common programming mistakes in your code.
+```
+███████╗██╗██╗  ██╗ ██████╗ ██████╗ ██████╗ ███████╗
+██╔════╝██║╚██╗██╔╝██╔════╝██╔═══██╗██╔══██╗██╔════╝
+█████╗  ██║ ╚███╔╝ ██║     ██║   ██║██║  ██║█████╗
+██╔══╝  ██║ ██╔██╗ ██║     ██║   ██║██║  ██║██╔══╝
+██║     ██║██╔╝ ██╗╚██████╗╚██████╔╝██████╔╝███████╗
+╚═╝     ╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═════╝ ╚══════╝
+```
+
+**Detect. Fix. Trust. — In your browser, offline, instantly.**
+
+[![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-5.x-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![No Backend](https://img.shields.io/badge/backend-none-success?style=flat-square)](#)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](./CONTRIBUTING.md)
+
+</div>
+
+---
+
+## What is FixCode?
+
+**FixCode** is a fully client-side developer tool that detects, explains, and automatically repairs syntax errors and common programming mistakes — with zero latency, zero telemetry, and zero server round-trips.
+
+Unlike AI-powered code fixers that send your code to a remote model, FixCode runs entirely inside your browser using deterministic rule-based analysis. Every fix is explainable, reproducible, and instant.
+
+> **Philosophy:** Developers deserve tools that are fast, transparent, and respect their privacy. FixCode never sees your code — your browser does.
+
+---
 
 ## Features
 
-- 🔍 **Syntax Error Detection** - Detects missing semicolons, unclosed brackets, and other syntax issues
-- 🔧 **Auto-Fix** - Automatically fixes safe, well-known errors
-- 📊 **Before/After Comparison** - Side-by-side diff view showing all changes
-- 💡 **Clear Explanations** - Detailed explanations for each fix applied
-- 🎨 **Modern UI** - Beautiful dark mode interface with glassmorphism and neon accents
-- ⚡ **Fully Offline** - No AI, no database, no backend - everything runs in your browser
+| Feature | Description |
+|---|---|
+| 🔍 **Syntax Error Detection** | Identifies missing semicolons, unclosed brackets, mismatched delimiters, and structural issues |
+| 🔧 **Auto-Fix Engine** | Applies safe, well-understood fixes automatically — no guessing, no hallucinations |
+| 📊 **Side-by-Side Diff** | Before/after comparison view with highlighted change regions using `diff-match-patch` |
+| 💡 **Fix Explanations** | Every applied fix is annotated with a human-readable explanation of what changed and why |
+| ⚡ **Sub-200ms Analysis** | Deterministic rule execution with no network calls — results appear as you type |
+| 🌐 **Fully Offline** | No AI, no API, no database, no backend — zero external dependencies at runtime |
+| 🎨 **Monaco Editor** | The same editor that powers VS Code, with syntax highlighting and IntelliSense |
+
+---
 
 ## Supported Languages
 
-1. **JavaScript** - Missing semicolons, unclosed brackets, undefined variables, formatting
-2. **TypeScript** - Type errors, missing imports, invalid typings, formatting
-3. **Python** - SyntaxError, indentation issues, missing colons, unused imports
-4. **Java** - Missing semicolons, missing braces, import issues, basic syntax errors
-5. **C++** - Missing semicolons, unclosed braces, invalid includes, formatting issues
+FixCode currently supports **5 languages** with dedicated rule engines:
+
+<table>
+<thead>
+<tr><th>Language</th><th>Rules Covered</th></tr>
+</thead>
+<tbody>
+<tr>
+  <td><strong>JavaScript</strong></td>
+  <td>Missing semicolons, unclosed brackets/parens/braces, <code>var</code> → <code>let/const</code> suggestions, console.log cleanup, formatting normalization</td>
+</tr>
+<tr>
+  <td><strong>TypeScript</strong></td>
+  <td>All JS rules + type annotation errors, missing <code>interface</code> fields, invalid generic syntax, missing import types</td>
+</tr>
+<tr>
+  <td><strong>Python</strong></td>
+  <td>IndentationError, missing colons after <code>if/for/while/def/class</code>, unused imports, mixed tabs/spaces, trailing whitespace</td>
+</tr>
+<tr>
+  <td><strong>Java</strong></td>
+  <td>Missing semicolons, unclosed braces, missing <code>public static void main</code> signature, import resolution, basic access modifier issues</td>
+</tr>
+<tr>
+  <td><strong>C++</strong></td>
+  <td>Missing semicolons, unclosed braces, invalid <code>#include</code> syntax, missing <code>std::</code> namespace, formatting issues</td>
+</tr>
+</tbody>
+</table>
+
+> Want support for another language? [Open a feature request →](../../issues/new?template=feature_request.md)
+
+---
+
+## Architecture
+
+FixCode is a single-page React application with no backend. Here's how it works:
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    Browser (Client)                  │
+│                                                      │
+│  ┌──────────────┐    ┌──────────────────────────┐   │
+│  │ Monaco Editor│───▶│     Language Detector     │   │
+│  │  (Input)     │    └────────────┬─────────────┘   │
+│  └──────────────┘                 │                  │
+│                                   ▼                  │
+│                        ┌──────────────────┐          │
+│                        │   Rule Engine    │          │
+│                        │  JS / TS / PY   │          │
+│                        │  JAVA / C++     │          │
+│                        └────────┬─────────┘          │
+│                                 │                    │
+│              ┌──────────────────┼──────────────┐     │
+│              ▼                  ▼              ▼     │
+│      ┌──────────────┐  ┌──────────────┐  ┌──────┐   │
+│      │  Fixed Code  │  │  Fix Report  │  │ Diff │   │
+│      │  (Monaco)    │  │ Explanations │  │ View │   │
+│      └──────────────┘  └──────────────┘  └──────┘   │
+│                                                      │
+│                  State: Zustand Store                │
+└─────────────────────────────────────────────────────┘
+```
+
+**No network calls are made after the initial page load.** Once the app is loaded, it operates entirely in memory.
+
+---
 
 ## Tech Stack
 
-- **React + Vite** - Modern frontend framework
-- **TypeScript** - Type-safe development
-- **Monaco Editor** - VS Code editor in the browser
-- **Tailwind CSS** - Utility-first CSS framework
-- **Framer Motion** - Smooth animations
-- **Zustand** - Lightweight state management
-- **diff-match-patch** - Diff visualization
+```
+Frontend Framework   React 18 + Vite 5
+Language             TypeScript 5
+Editor               Monaco Editor (VS Code core)
+Styling              Tailwind CSS v3
+Animations           Framer Motion
+State Management     Zustand
+Diff Algorithm       diff-match-patch
+```
+
+### Why these choices?
+
+- **Monaco Editor** — The gold standard for code editing in browsers. Provides syntax highlighting, multi-cursor, and keyboard shortcuts developers already know.
+- **Zustand** — Minimal boilerplate, no providers, and excellent DevTools support. Ideal for a tool of this scale.
+- **diff-match-patch** — Google's battle-tested diff library, used in production by Google Docs and others.
+- **Vite** — Sub-second HMR and optimized production builds with native ESM.
+
+---
 
 ## Getting Started
+
+### Prerequisites
+
+- Node.js `>=18.0.0`
+- npm `>=9.0.0`
 
 ### Installation
 
 ```bash
+# Clone the repository
+git clone https://github.com/your-username/fixcode.git
+cd fixcode
+
+# Install dependencies
 npm install
 ```
 
 ### Development
 
 ```bash
+# Start the dev server with HMR
 npm run dev
 ```
 
-### Build
+The app will be available at `http://localhost:5173`.
+
+### Production Build
 
 ```bash
+# Type-check + build for production
 npm run build
-```
 
-### Preview
-
-```bash
+# Preview the production build locally
 npm run preview
 ```
 
+### Other Scripts
+
+```bash
+npm run lint          # Run ESLint
+npm run type-check    # Run tsc without emitting files
+npm run test          # Run Vitest unit tests (if configured)
+```
+
+---
+
 ## Usage
 
-1. Select your programming language
-2. Paste or type your code in the editor
-3. Click "Analyze & Fix"
-4. Review the fixes and explanations
-5. Copy or download the fixed code
+1. **Select a language** — Choose from the language dropdown (JS, TS, Python, Java, C++)
+2. **Paste or type code** — Use the Monaco editor on the left panel
+3. **Click "Analyze & Fix"** — The rule engine runs synchronously in the main thread
+4. **Review the diff** — The right panel shows a before/after comparison with change highlighting
+5. **Read the explanations** — Each applied fix is listed with a plain-language description
+6. **Copy or download** — Export the fixed code via the toolbar
+
+### Keyboard Shortcuts
+
+| Shortcut | Action |
+|---|---|
+| `Ctrl/Cmd + Enter` | Run analysis |
+| `Ctrl/Cmd + Shift + C` | Copy fixed code |
+| `Ctrl/Cmd + D` | Toggle diff view |
+| `Ctrl/Cmd + K` | Clear editor |
+
+---
 
 ## Design Principles
 
-- ✅ Fully offline-capable
-- ✅ Deterministic output
-- ✅ Fast execution (<200ms)
-- ✅ Transparent fixes
-- ✅ Developer trust
+FixCode is built around a strict set of constraints that prioritize **developer trust** over feature breadth:
+
+- **Deterministic output** — The same input always produces the same output. No variance, no surprises.
+- **Explainability first** — Every fix must be explainable to a junior developer in one sentence.
+- **Zero telemetry** — No analytics, no error tracking, no usage data collection of any kind.
+- **Offline-capable** — Works after the initial load with no internet connection.
+- **Fast by default** — Analysis must complete in under 200ms on a mid-range device.
+- **Conservative fixes only** — FixCode never rewrites logic, only corrects structural/syntactic issues where the intent is unambiguous.
+
+---
+
+## Contributing
+
+Contributions are welcome. Please read the [contribution guide](./CONTRIBUTING.md) before opening a PR.
+
+### Adding a New Language
+
+1. Create a new rule file in `src/rules/<language>.ts`
+2. Implement the `LanguageRuleEngine` interface
+3. Register it in `src/rules/index.ts`
+4. Add test cases in `src/rules/__tests__/<language>.test.ts`
+
+Each rule function must follow this contract:
+
+```typescript
+interface Fix {
+  line: number;
+  description: string;
+  original: string;
+  fixed: string;
+}
+
+interface RuleEngine {
+  analyze(code: string): Fix[];
+  apply(code: string, fixes: Fix[]): string;
+}
+```
+
+### Reporting Bugs
+
+Please include:
+- The language selected
+- The input code that triggered the issue
+- The actual vs. expected output
+- Browser and OS version
+
+---
+
+## Roadmap
+
+- [ ] CSS / SCSS support
+- [ ] Go support
+- [ ] Rust support
+- [ ] VS Code extension
+- [ ] CLI version (`npx fixcode ./src`)
+- [ ] Rule severity levels (error / warning / info)
+- [ ] Custom rule configuration via `.fixcoderc`
+- [ ] Shareable fix permalinks (URL-encoded state)
+
+---
 
 ## License
 
-MIT
+MIT © 2024. See [LICENSE](./LICENSE) for full terms.
+
+---
+
+<div align="center">
+
+Built for developers who value speed, transparency, and privacy.
+
+**[Report a Bug](../../issues/new?template=bug_report.md) · [Request a Feature](../../issues/new?template=feature_request.md) · [Discuss](../../discussions)**
+
+</div>
