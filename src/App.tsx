@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { CodeEditor } from './components/CodeEditor';
 import { DiffViewer } from './components/DiffViewer';
 import { FixExplanation } from './components/FixExplanation';
+import { OnlineCheckPanel } from './components/OnlineCheckPanel';
 import { LanguageSelector } from './components/LanguageSelector';
 import { LoadingAnimation } from './components/LoadingAnimation';
 import { HistoryPanel } from './components/HistoryPanel';
@@ -11,9 +12,10 @@ import { StatsBar } from './components/StatsBar';
 import { ProjectSelector } from './components/ProjectSelector';
 import { useStore, selectActiveProject } from './store/useStore';
 import { analyzeCode } from './services/analyzer';
-import type { HistoryItem, Language } from './types';
+import { runOnlineCheck } from './checkers';
+import type { HistoryItem, Language, OnlineCheckResult } from './types';
 
-type ResultTab = 'fixes' | 'diff';
+type ResultTab = 'fixes' | 'diff' | 'check';
 type MobileView = 'editor' | 'results';
 
 const extMap: Record<Language, string> = {
@@ -46,11 +48,30 @@ function App() {
 
   const [showHistory, setShowHistory] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [resultTab, setResultTab] = useState<ResultTab>('fixes');
+  const [resultTab, setResultTab] = useState<ResultTab>('check');
   const [mobileView, setMobileView] = useState<MobileView>('editor');
+  const [onlineCheckResult, setOnlineCheckResult] = useState<OnlineCheckResult | null>(null);
+  const [isChecking, setIsChecking] = useState(false);
 
+  // Debounced live validation — runs 500ms after code/language change
+  useEffect(() => {
+    if (!code.trim()) {
+      setOnlineCheckResult(null);
+      setIsChecking(false);
+      return;
+    }
+    setIsChecking(true);
+    const timer = setTimeout(() => {
+      setOnlineCheckResult(runOnlineCheck(code, language));
+      setIsChecking(false);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [code, language]);
+
+  // Reset check result when switching projects
   useEffect(() => {
     setShowHistory(false);
+    setOnlineCheckResult(null);
   }, [activeProjectId]);
 
   const showToast = useCallback((msg: string) => {
@@ -117,7 +138,7 @@ function App() {
         setResult(null);
       } else if (mod && e.key === 'd') {
         e.preventDefault();
-        setResultTab(t => t === 'diff' ? 'fixes' : 'diff');
+        if (result) setResultTab(t => t === 'diff' ? 'fixes' : 'diff');
       }
     };
     window.addEventListener('keydown', handler);
@@ -125,6 +146,11 @@ function App() {
   }, [handleAnalyze, handleCopy, result, setCode, setResult]);
 
   const allFixes = result ? [...result.errors, ...result.fixes] : [];
+  const checkCount = onlineCheckResult?.issues.length ?? 0;
+  const checkHasErrors = (onlineCheckResult?.issues.filter(i => i.severity === 'error').length ?? 0) > 0;
+
+  // When there's no result, always show the check tab content
+  const activeTab: ResultTab = !result && resultTab !== 'check' ? 'check' : resultTab;
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
@@ -193,7 +219,9 @@ function App() {
               : 'text-gray-500 border-transparent hover:text-gray-300'
           }`}
         >
-          Results{result ? ` (${allFixes.length})` : ''}
+          {activeTab === 'check'
+            ? `Check${checkCount > 0 ? ` (${checkCount})` : ''}`
+            : `Results (${allFixes.length})`}
         </button>
       </div>
 
@@ -235,19 +263,53 @@ function App() {
               language={language}
               onChange={setCode}
               errors={result?.errors.map(e => ({ line: e.line, message: e.message })) ?? []}
+              checkIssues={onlineCheckResult?.issues ?? []}
             />
           </div>
         </div>
 
-        {/* Right — results */}
+        {/* Right — results + online check */}
         <div className={`flex-col w-full sm:w-1/2 overflow-hidden ${mobileView === 'results' ? 'flex' : 'hidden sm:flex'}`}>
-          {result ? (
-            <>
-              <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white/3 border-b border-white/10">
+
+          {/* Tab bar — always visible */}
+          <div className="flex-shrink-0 flex items-center gap-1.5 px-4 py-2 bg-white/3 border-b border-white/10">
+            {/* Online Check tab */}
+            <button
+              onClick={() => { setResultTab('check'); setMobileView('results'); }}
+              className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded font-semibold transition-all ${
+                activeTab === 'check'
+                  ? 'bg-neon-cyan text-gray-900'
+                  : 'text-gray-500 hover:text-gray-300 bg-white/5 hover:bg-white/10'
+              }`}
+            >
+              <span>Live Check</span>
+              {checkCount > 0 && (
+                <span className={`rounded-full w-4 h-4 flex items-center justify-center text-xs leading-none font-bold ${
+                  activeTab === 'check'
+                    ? 'bg-gray-900/40 text-gray-900'
+                    : checkHasErrors
+                    ? 'bg-red-500/20 text-red-400'
+                    : 'bg-yellow-500/20 text-yellow-400'
+                }`}>
+                  {checkCount > 9 ? '9+' : checkCount}
+                </span>
+              )}
+              {isChecking && (
+                <motion.span
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 0.8, repeat: Infinity }}
+                  className={`w-1.5 h-1.5 rounded-full ${activeTab === 'check' ? 'bg-gray-900' : 'bg-cyan-400'}`}
+                />
+              )}
+            </button>
+
+            {/* Fixes + Diff — only when analysis result exists */}
+            {result && (
+              <>
                 <button
                   onClick={() => setResultTab('fixes')}
                   className={`px-2.5 py-1 text-xs rounded font-semibold transition-all ${
-                    resultTab === 'fixes'
+                    activeTab === 'fixes'
                       ? 'bg-neon-cyan text-gray-900'
                       : 'text-gray-500 hover:text-gray-300 bg-white/5 hover:bg-white/10'
                   }`}
@@ -258,18 +320,21 @@ function App() {
                   onClick={() => setResultTab('diff')}
                   title="Toggle diff (⌘D)"
                   className={`px-2.5 py-1 text-xs rounded font-semibold transition-all ${
-                    resultTab === 'diff'
+                    activeTab === 'diff'
                       ? 'bg-neon-cyan text-gray-900'
                       : 'text-gray-500 hover:text-gray-300 bg-white/5 hover:bg-white/10'
                   }`}
                 >
                   Diff
                 </button>
+              </>
+            )}
 
-                <div className="flex-1" />
+            <div className="flex-1" />
 
-                {result && <div className="sm:hidden"><StatsBar result={result} /></div>}
-
+            {result && (
+              <>
+                <div className="sm:hidden"><StatsBar result={result} /></div>
                 <button
                   onClick={() => handleCopy(result.fixedCode)}
                   title="Copy fixed code (⌘⇧C)"
@@ -283,57 +348,44 @@ function App() {
                 >
                   Download
                 </button>
-              </div>
+              </>
+            )}
+          </div>
 
-              <div className="flex-1 overflow-auto p-4">
-                <AnimatePresence mode="wait">
-                  {resultTab === 'fixes' ? (
-                    <motion.div
-                      key="fixes"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                    >
-                      <FixExplanation fixes={allFixes} />
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="diff"
-                      initial={{ opacity: 0, y: 8 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="h-full"
-                    >
-                      <DiffViewer original={result.originalCode} fixed={result.fixedCode} />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center px-8 select-none">
-              <div className="text-5xl opacity-10 mb-5">⚡</div>
-              <p className="text-gray-600 text-sm max-w-56 leading-relaxed">
-                Paste your code on the left, then tap{' '}
-                <span className="text-neon-cyan font-semibold">Fix</span>.
-              </p>
-              <div className="mt-8 space-y-2 text-xs text-gray-700 hidden sm:block">
-                {[
-                  ['⌘↵', 'Analyze & fix'],
-                  ['⌘⇧C', 'Copy fixed code'],
-                  ['⌘D', 'Toggle diff view'],
-                  ['⌘K', 'Clear editor'],
-                ].map(([key, label]) => (
-                  <div key={key} className="flex items-center gap-3 justify-center">
-                    <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-gray-500">
-                      {key}
-                    </kbd>
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Panel content */}
+          <div className="flex-1 overflow-auto p-4">
+            <AnimatePresence mode="wait">
+              {activeTab === 'check' ? (
+                <motion.div
+                  key="check"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <OnlineCheckPanel result={onlineCheckResult} isChecking={isChecking} />
+                </motion.div>
+              ) : activeTab === 'fixes' ? (
+                <motion.div
+                  key="fixes"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <FixExplanation fixes={allFixes} />
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="diff"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  className="h-full"
+                >
+                  {result && <DiffViewer original={result.originalCode} fixed={result.fixedCode} />}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </div>
       </div>
 

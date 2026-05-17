@@ -1,12 +1,13 @@
 import { useRef, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import type { Language } from '../types';
+import type { CheckIssue, Language } from '../types';
 
 interface CodeEditorProps {
   code: string;
   language: Language;
   onChange: (value: string) => void;
   errors?: Array<{ line: number; message: string }>;
+  checkIssues?: CheckIssue[];
 }
 
 const languageMap: Record<Language, string> = {
@@ -17,7 +18,7 @@ const languageMap: Record<Language, string> = {
   cpp: 'cpp',
 };
 
-export function CodeEditor({ code, language, onChange, errors = [] }: CodeEditorProps) {
+export function CodeEditor({ code, language, onChange, errors = [], checkIssues = [] }: CodeEditorProps) {
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
 
@@ -46,6 +47,35 @@ export function CodeEditor({ code, language, onChange, errors = [] }: CodeEditor
 
     monaco.editor.setModelMarkers(model, 'fixcode', markers);
   }, [errors]);
+
+  // Sync online check markers using a separate owner so they don't conflict
+  useEffect(() => {
+    const editor = editorRef.current;
+    const monaco = monacoRef.current;
+    if (!editor || !monaco) return;
+
+    const model = editor.getModel();
+    if (!model) return;
+
+    const severityMap: Record<CheckIssue['severity'], number> = {
+      error:   monaco.MarkerSeverity.Error,
+      warning: monaco.MarkerSeverity.Warning,
+      info:    monaco.MarkerSeverity.Info,
+      hint:    monaco.MarkerSeverity.Hint,
+    };
+
+    const markers = checkIssues.map(issue => ({
+      startLineNumber: issue.line,
+      startColumn: issue.column ?? 1,
+      endLineNumber: issue.line,
+      endColumn: model.getLineMaxColumn(issue.line) || 1000,
+      message: `[${issue.rule}] ${issue.message}`,
+      severity: severityMap[issue.severity],
+      source: 'Online Check',
+    }));
+
+    monaco.editor.setModelMarkers(model, 'online-check', markers);
+  }, [checkIssues]);
 
   return (
     <div className="h-full w-full">

@@ -1,5 +1,25 @@
 export type Language = 'javascript' | 'typescript' | 'python' | 'java' | 'cpp';
 
+export type CheckCategory = 'syntax' | 'warning' | 'modernization' | 'performance' | 'style';
+
+export interface CheckIssue {
+  id: string;
+  line: number;
+  column?: number;
+  message: string;
+  description: string;
+  category: CheckCategory;
+  severity: 'error' | 'warning' | 'info' | 'hint';
+  suggestion?: string;
+  rule: string;
+}
+
+export interface OnlineCheckResult {
+  issues: CheckIssue[];
+  language: Language;
+  timestamp: number;
+}
+
 export interface CodeFix {
   line: number;
   column: number;
