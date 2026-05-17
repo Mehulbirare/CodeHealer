@@ -8,7 +8,8 @@ import { LoadingAnimation } from './components/LoadingAnimation';
 import { HistoryPanel } from './components/HistoryPanel';
 import { Toast } from './components/Toast';
 import { StatsBar } from './components/StatsBar';
-import { useStore } from './store/useStore';
+import { ProjectSelector } from './components/ProjectSelector';
+import { useStore, selectActiveProject } from './store/useStore';
 import { analyzeCode } from './services/analyzer';
 import type { HistoryItem, Language } from './types';
 
@@ -23,20 +24,30 @@ const extMap: Record<Language, string> = {
 };
 
 function App() {
+  const state = useStore();
+  const activeProject = selectActiveProject(state);
+  const { code, language, history } = activeProject;
   const {
-    code,
-    language,
+    projects,
+    activeProjectId,
     result,
     isAnalyzing,
-    history,
     setCode,
     setLanguage,
     setResult,
     setIsAnalyzing,
     addToHistory,
-  } = useStore();
+    createProject,
+    deleteProject,
+    renameProject,
+    setActiveProject,
+  } = state;
 
   const [showHistory, setShowHistory] = useState(false);
+
+  useEffect(() => {
+    setShowHistory(false);
+  }, [activeProjectId]);
   const [toast, setToast] = useState<string | null>(null);
   const [resultTab, setResultTab] = useState<ResultTab>('fixes');
 
@@ -123,6 +134,17 @@ function App() {
         <h1 className="text-xl font-bold bg-gradient-to-r from-neon-cyan to-neon-pink bg-clip-text text-transparent tracking-tight">
           FixCode
         </h1>
+
+        <div className="w-px h-5 bg-white/10" />
+
+        <ProjectSelector
+          projects={projects}
+          activeProjectId={activeProjectId}
+          onSwitch={setActiveProject}
+          onCreate={createProject}
+          onRename={renameProject}
+          onDelete={deleteProject}
+        />
 
         <div className="w-px h-5 bg-white/10" />
 

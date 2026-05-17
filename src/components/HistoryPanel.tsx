@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { useStore } from '../store/useStore';
+import { useStore, selectActiveProject } from '../store/useStore';
 import type { HistoryItem, Language } from '../types';
 
 const langLabel: Record<Language, string> = {
@@ -16,7 +16,8 @@ interface HistoryPanelProps {
 }
 
 export function HistoryPanel({ onRestore, onClose }: HistoryPanelProps) {
-  const { history, clearHistory } = useStore();
+  const history = useStore(s => selectActiveProject(s).history);
+  const clearHistory = useStore(s => s.clearHistory);
 
   return (
     <>
