@@ -1,14 +1,27 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import type { Language, AnalysisResult, HistoryItem } from '../types';
+import type { Language, AnalysisResult, HistoryItem, Project } from '../types';
+
+const makeDefaultProject = (): Project => ({
+  id: 'default',
+  name: 'My Project',
+  language: 'javascript',
+  code: '',
+  history: [],
+  createdAt: Date.now(),
+});
 
 interface AppState {
-  code: string;
-  language: Language;
+  projects: Project[];
+  activeProjectId: string;
   result: AnalysisResult | null;
   isAnalyzing: boolean;
-  history: HistoryItem[];
-  
+
+  createProject: (name: string) => void;
+  deleteProject: (id: string) => void;
+  renameProject: (id: string, name: string) => void;
+  setActiveProject: (id: string) => void;
+
   setCode: (code: string) => void;
   setLanguage: (language: Language) => void;
   setResult: (result: AnalysisResult | null) => void;
@@ -17,28 +30,97 @@ interface AppState {
   clearHistory: () => void;
 }
 
+export const selectActiveProject = (state: AppState): Project =>
+  state.projects.find(p => p.id === state.activeProjectId) ?? state.projects[0];
+
 export const useStore = create<AppState>()(
   persist(
     (set) => ({
-      code: '',
-      language: 'javascript',
+      projects: [makeDefaultProject()],
+      activeProjectId: 'default',
       result: null,
       isAnalyzing: false,
-      history: [],
-      
-      setCode: (code) => set({ code }),
-      setLanguage: (language) => set({ language }),
+
+      createProject: (name) => {
+        const id = Date.now().toString();
+        const project: Project = {
+          id,
+          name: name.trim() || 'Untitled',
+          language: 'javascript',
+          code: '',
+          history: [],
+          createdAt: Date.now(),
+        };
+        set((state) => ({
+          projects: [...state.projects, project],
+          activeProjectId: id,
+          result: null,
+        }));
+      },
+
+      deleteProject: (id) => set((state) => {
+        if (state.projects.length <= 1) return state;
+        const remaining = state.projects.filter(p => p.id !== id);
+        const newActiveId = state.activeProjectId === id
+          ? remaining[remaining.length - 1].id
+          : state.activeProjectId;
+        return { projects: remaining, activeProjectId: newActiveId, result: null };
+      }),
+
+      renameProject: (id, name) => set((state) => ({
+        projects: state.projects.map(p =>
+          p.id === id ? { ...p, name: name.trim() || p.name } : p
+        ),
+      })),
+
+      setActiveProject: (id) => set({ activeProjectId: id, result: null }),
+
+      setCode: (code) => set((state) => ({
+        projects: state.projects.map(p =>
+          p.id === state.activeProjectId ? { ...p, code } : p
+        ),
+      })),
+
+      setLanguage: (language) => set((state) => ({
+        projects: state.projects.map(p =>
+          p.id === state.activeProjectId ? { ...p, language } : p
+        ),
+      })),
+
       setResult: (result) => set({ result }),
       setIsAnalyzing: (isAnalyzing) => set({ isAnalyzing }),
+
       addToHistory: (item) => set((state) => ({
-        history: [item, ...state.history].slice(0, 50), // Keep last 50
+        projects: state.projects.map(p =>
+          p.id === state.activeProjectId
+            ? { ...p, history: [item, ...p.history].slice(0, 50) }
+            : p
+        ),
       })),
-      clearHistory: () => set({ history: [] }),
+
+      clearHistory: () => set((state) => ({
+        projects: state.projects.map(p =>
+          p.id === state.activeProjectId ? { ...p, history: [] } : p
+        ),
+      })),
     }),
     {
       name: 'fixcode-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ history: state.history }),
+      version: 2,
+      migrate: (persisted: any, version: number) => {
+        if (version < 2) {
+          const oldHistory: HistoryItem[] = persisted?.history ?? [];
+          const project = makeDefaultProject();
+          project.history = oldHistory;
+          return { projects: [project], activeProjectId: 'default' };
+        }
+        return persisted;
+      },
+      partialize: (state) => ({
+        projects: state.projects,
+        activeProjectId: state.activeProjectId,
+      }),
     }
   )
 );

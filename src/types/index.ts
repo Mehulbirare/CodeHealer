@@ -25,3 +25,12 @@ export interface HistoryItem {
   fixedCode: string;
   timestamp: number;
 }
+
+export interface Project {
+  id: string;
+  name: string;
+  language: Language;
+  code: string;
+  history: HistoryItem[];
+  createdAt: number;
+}
