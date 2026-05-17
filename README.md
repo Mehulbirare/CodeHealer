@@ -13,8 +13,8 @@
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178c6?style=flat-square&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![React](https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5.x-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![React](https://img.shields.io/badge/React-19-61dafb?style=flat-square&logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7.x-646cff?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![No Backend](https://img.shields.io/badge/backend-none-success?style=flat-square)](#)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square)](./CONTRIBUTING.md)
 
@@ -36,11 +36,14 @@ Unlike AI-powered code fixers that send your code to a remote model, FixCode run
 
 | Feature | Description |
 |---|---|
+| 📁 **Multi-Project Workspace** | Create, rename, switch, and delete named projects — each with its own code, language, and history |
 | 🔍 **Syntax Error Detection** | Identifies missing semicolons, unclosed brackets, mismatched delimiters, and structural issues |
 | 🔧 **Auto-Fix Engine** | Applies safe, well-understood fixes automatically — no guessing, no hallucinations |
 | 📊 **Side-by-Side Diff** | Before/after comparison view with highlighted change regions using `diff-match-patch` |
 | 💡 **Fix Explanations** | Every applied fix is annotated with a human-readable explanation of what changed and why |
-| ⚡ **Sub-200ms Analysis** | Deterministic rule execution with no network calls — results appear as you type |
+| 🕓 **Per-Project History** | Last 50 analyses stored per project in localStorage — restore any previous run in one click |
+| 💾 **Auto-Save** | Editor content is automatically saved to the active project as you type |
+| ⚡ **Sub-200ms Analysis** | Deterministic rule execution with no network calls — results appear instantly |
 | 🌐 **Fully Offline** | No AI, no API, no database, no backend — zero external dependencies at runtime |
 | 🎨 **Monaco Editor** | The same editor that powers VS Code, with syntax highlighting and IntelliSense |
 
@@ -87,29 +90,31 @@ FixCode currently supports **5 languages** with dedicated rule engines:
 FixCode is a single-page React application with no backend. Here's how it works:
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    Browser (Client)                  │
-│                                                      │
-│  ┌──────────────┐    ┌──────────────────────────┐   │
-│  │ Monaco Editor│───▶│     Language Detector     │   │
-│  │  (Input)     │    └────────────┬─────────────┘   │
-│  └──────────────┘                 │                  │
-│                                   ▼                  │
-│                        ┌──────────────────┐          │
-│                        │   Rule Engine    │          │
-│                        │  JS / TS / PY   │          │
-│                        │  JAVA / C++     │          │
-│                        └────────┬─────────┘          │
-│                                 │                    │
-│              ┌──────────────────┼──────────────┐     │
-│              ▼                  ▼              ▼     │
-│      ┌──────────────┐  ┌──────────────┐  ┌──────┐   │
-│      │  Fixed Code  │  │  Fix Report  │  │ Diff │   │
-│      │  (Monaco)    │  │ Explanations │  │ View │   │
-│      └──────────────┘  └──────────────┘  └──────┘   │
-│                                                      │
-│                  State: Zustand Store                │
-└─────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────┐
+│                     Browser (Client)                      │
+│                                                           │
+│  ┌─────────────────────────────────────────────────────┐ │
+│  │               Zustand Store (localStorage)           │ │
+│  │  projects[]  activeProjectId  result  isAnalyzing   │ │
+│  └───────────────────────┬─────────────────────────────┘ │
+│                          │                                │
+│  ┌───────────────────────▼─────────────────────────────┐ │
+│  │                   Project Workspace                  │ │
+│  │   name · language · code · history (last 50)        │ │
+│  └──────────┬──────────────────────────────────────────┘ │
+│             │                                             │
+│  ┌──────────▼──────────┐    ┌───────────────────────┐    │
+│  │    Monaco Editor    │───▶│     Rule Engine        │    │
+│  │    (Input Panel)    │    │  JS / TS / PY          │    │
+│  └─────────────────────┘    │  JAVA / C++            │    │
+│                             └──────────┬──────────────┘   │
+│                                        │                  │
+│              ┌─────────────────────────┼──────────┐       │
+│              ▼                         ▼          ▼       │
+│      ┌──────────────┐  ┌──────────────────┐  ┌──────┐    │
+│      │  Fixed Code  │  │  Fix Explanations│  │ Diff │    │
+│      └──────────────┘  └──────────────────┘  └──────┘    │
+└──────────────────────────────────────────────────────────┘
 ```
 
 **No network calls are made after the initial page load.** Once the app is loaded, it operates entirely in memory.
@@ -119,19 +124,19 @@ FixCode is a single-page React application with no backend. Here's how it works:
 ## Tech Stack
 
 ```
-Frontend Framework   React 18 + Vite 5
+Frontend Framework   React 19 + Vite 7
 Language             TypeScript 5
 Editor               Monaco Editor (VS Code core)
 Styling              Tailwind CSS v3
 Animations           Framer Motion
-State Management     Zustand
+State Management     Zustand (with localStorage persistence)
 Diff Algorithm       diff-match-patch
 ```
 
 ### Why these choices?
 
 - **Monaco Editor** — The gold standard for code editing in browsers. Provides syntax highlighting, multi-cursor, and keyboard shortcuts developers already know.
-- **Zustand** — Minimal boilerplate, no providers, and excellent DevTools support. Ideal for a tool of this scale.
+- **Zustand** — Minimal boilerplate, no providers, and excellent DevTools support. Project workspaces are persisted via the `persist` middleware with a version migration path.
 - **diff-match-patch** — Google's battle-tested diff library, used in production by Google Docs and others.
 - **Vite** — Sub-second HMR and optimized production builds with native ESM.
 
@@ -179,19 +184,33 @@ npm run preview
 ```bash
 npm run lint          # Run ESLint
 npm run type-check    # Run tsc without emitting files
-npm run test          # Run Vitest unit tests (if configured)
 ```
 
 ---
 
 ## Usage
 
-1. **Select a language** — Choose from the language dropdown (JS, TS, Python, Java, C++)
-2. **Paste or type code** — Use the Monaco editor on the left panel
-3. **Click "Analyze & Fix"** — The rule engine runs synchronously in the main thread
-4. **Review the diff** — The right panel shows a before/after comparison with change highlighting
-5. **Read the explanations** — Each applied fix is listed with a plain-language description
-6. **Copy or download** — Export the fixed code via the toolbar
+### Projects
+
+FixCode organizes your work into **named projects**. Each project stores its own language setting, editor code, and analysis history independently.
+
+- Click the **project dropdown** in the header to switch between projects
+- Use **"New project"** inside the dropdown to create one
+- Hover a project row to reveal **rename (✎)** and **delete (✕)** actions
+- Switching projects automatically restores that project's last code and language
+
+### Analyzing Code
+
+1. **Select a project** — or create a new one from the header dropdown
+2. **Select a language** — use the language dropdown (JS, TS, Python, Java, C++)
+3. **Paste or type code** — editor auto-saves to the active project as you type
+4. **Click "Analyze & Fix"** — the rule engine runs instantly in the browser
+5. **Review the results** — switch between the **Fixes** tab (annotated issue list) and the **Diff** tab (before/after comparison)
+6. **Copy or download** — export the fixed code via the toolbar buttons
+
+### History
+
+Each project maintains its own history of the last 50 analyses. Open it with the **History** button in the header. Click any entry to restore that code and language to the editor.
 
 ### Keyboard Shortcuts
 
@@ -223,24 +242,26 @@ Contributions are welcome. Please read the [contribution guide](./CONTRIBUTING.m
 
 ### Adding a New Language
 
-1. Create a new rule file in `src/rules/<language>.ts`
-2. Implement the `LanguageRuleEngine` interface
-3. Register it in `src/rules/index.ts`
-4. Add test cases in `src/rules/__tests__/<language>.test.ts`
+1. Create a new analyzer in `src/analyzers/<language>.ts` extending `BaseAnalyzer`
+2. Implement `analyze(code)` and `fix(code, fixes)` methods
+3. Register it in `src/analyzers/index.ts`
+4. Add the language to the `Language` union type in `src/types/index.ts`
 
-Each rule function must follow this contract:
+Each analyzer must follow this contract:
 
 ```typescript
-interface Fix {
-  line: number;
-  description: string;
-  original: string;
-  fixed: string;
+interface Analyzer {
+  analyze(code: string): Promise<CodeFix[]>;
+  fix(code: string, fixes: CodeFix[]): Promise<string>;
 }
 
-interface RuleEngine {
-  analyze(code: string): Fix[];
-  apply(code: string, fixes: Fix[]): string;
+interface CodeFix {
+  line: number;
+  column: number;
+  message: string;
+  severity: 'error' | 'warning' | 'info';
+  fix: string;
+  explanation: string;
 }
 ```
 
@@ -261,9 +282,11 @@ Please include:
 - [ ] Rust support
 - [ ] VS Code extension
 - [ ] CLI version (`npx fixcode ./src`)
-- [ ] Rule severity levels (error / warning / info)
+- [x] Rule severity levels (error / warning / info)
 - [ ] Custom rule configuration via `.fixcoderc`
 - [ ] Shareable fix permalinks (URL-encoded state)
+- [x] Multi-project workspace with per-project history
+- [x] Auto-save editor state per project
 
 ---
 
