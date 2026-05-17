@@ -14,6 +14,7 @@ import { analyzeCode } from './services/analyzer';
 import type { HistoryItem, Language } from './types';
 
 type ResultTab = 'fixes' | 'diff';
+type MobileView = 'editor' | 'results';
 
 const extMap: Record<Language, string> = {
   typescript: 'ts',
@@ -44,12 +45,13 @@ function App() {
   } = state;
 
   const [showHistory, setShowHistory] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  const [resultTab, setResultTab] = useState<ResultTab>('fixes');
+  const [mobileView, setMobileView] = useState<MobileView>('editor');
 
   useEffect(() => {
     setShowHistory(false);
   }, [activeProjectId]);
-  const [toast, setToast] = useState<string | null>(null);
-  const [resultTab, setResultTab] = useState<ResultTab>('fixes');
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -69,6 +71,7 @@ function App() {
         timestamp: Date.now(),
       });
       setResultTab('fixes');
+      setMobileView('results');
     } catch (err) {
       console.error('Analysis error:', err);
     } finally {
@@ -96,9 +99,9 @@ function App() {
     setCode(item.originalCode);
     setLanguage(item.language);
     setResult(null);
+    setMobileView('editor');
   }, [setCode, setLanguage, setResult]);
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -125,19 +128,21 @@ function App() {
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900">
+
       {/* Header */}
       <motion.header
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        className="flex-shrink-0 flex items-center gap-4 px-5 py-3 bg-white/5 backdrop-blur-md border-b border-white/10"
+        className="flex-shrink-0 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 sm:px-5 py-2.5 sm:py-3 bg-white/5 backdrop-blur-md border-b border-white/10"
       >
         <h1 className="text-xl font-bold bg-gradient-to-r from-neon-cyan to-neon-pink bg-clip-text text-transparent tracking-tight">
           FixCode
         </h1>
 
-        <div className="w-px h-5 bg-white/10" />
+        <div className="hidden sm:block w-px h-5 bg-white/10" />
 
-        <div className="flex items-center gap-2">
+        {/* Controls — inline on desktop, full-width second row on mobile */}
+        <div className="flex items-center gap-2 order-last w-full sm:order-none sm:w-auto">
           <ProjectSelector
             projects={projects}
             activeProjectId={activeProjectId}
@@ -151,7 +156,7 @@ function App() {
 
         <div className="flex-1" />
 
-        {result && <StatsBar result={result} />}
+        {result && <div className="hidden sm:block"><StatsBar result={result} /></div>}
 
         <button
           onClick={() => setShowHistory(h => !h)}
@@ -168,10 +173,35 @@ function App() {
         </button>
       </motion.header>
 
+      {/* Mobile tab bar */}
+      <div className="sm:hidden flex-shrink-0 flex border-b border-white/10">
+        <button
+          onClick={() => setMobileView('editor')}
+          className={`flex-1 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+            mobileView === 'editor'
+              ? 'text-neon-cyan border-neon-cyan'
+              : 'text-gray-500 border-transparent hover:text-gray-300'
+          }`}
+        >
+          Editor
+        </button>
+        <button
+          onClick={() => setMobileView('results')}
+          className={`flex-1 py-2.5 text-xs font-semibold transition-colors border-b-2 ${
+            mobileView === 'results'
+              ? 'text-neon-cyan border-neon-cyan'
+              : 'text-gray-500 border-transparent hover:text-gray-300'
+          }`}
+        >
+          Results{result ? ` (${allFixes.length})` : ''}
+        </button>
+      </div>
+
       {/* Split pane */}
       <div className="flex flex-1 overflow-hidden">
+
         {/* Left — editor */}
-        <div className="flex flex-col w-1/2 border-r border-white/10 overflow-hidden">
+        <div className={`flex-col w-full sm:w-1/2 border-r border-white/10 overflow-hidden ${mobileView === 'editor' ? 'flex' : 'hidden sm:flex'}`}>
           <div className="flex-shrink-0 flex items-center justify-between px-4 py-2 bg-white/3 border-b border-white/10">
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Input</span>
             <div className="flex items-center gap-2">
@@ -191,9 +221,9 @@ function App() {
                 className="flex items-center gap-1.5 px-3 py-1 bg-neon-cyan text-gray-900 text-xs font-bold rounded disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {isAnalyzing ? (
-                  <><LoadingAnimation /> Analyzing…</>
+                  <><LoadingAnimation /><span className="hidden sm:inline">Analyzing…</span></>
                 ) : (
-                  'Analyze & Fix'
+                  <><span className="sm:hidden">Fix</span><span className="hidden sm:inline">Analyze & Fix</span></>
                 )}
               </motion.button>
             </div>
@@ -210,7 +240,7 @@ function App() {
         </div>
 
         {/* Right — results */}
-        <div className="flex flex-col w-1/2 overflow-hidden">
+        <div className={`flex-col w-full sm:w-1/2 overflow-hidden ${mobileView === 'results' ? 'flex' : 'hidden sm:flex'}`}>
           {result ? (
             <>
               <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-white/3 border-b border-white/10">
@@ -238,16 +268,18 @@ function App() {
 
                 <div className="flex-1" />
 
+                {result && <div className="sm:hidden"><StatsBar result={result} /></div>}
+
                 <button
                   onClick={() => handleCopy(result.fixedCode)}
                   title="Copy fixed code (⌘⇧C)"
                   className="px-2.5 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-colors"
                 >
-                  Copy fixed
+                  Copy
                 </button>
                 <button
                   onClick={() => handleDownload(result.fixedCode, result.language)}
-                  className="px-2.5 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-colors"
+                  className="hidden sm:block px-2.5 py-1 text-xs bg-white/5 border border-white/10 rounded text-gray-500 hover:text-gray-300 hover:bg-white/10 transition-colors"
                 >
                   Download
                 </button>
@@ -282,10 +314,10 @@ function App() {
             <div className="flex-1 flex flex-col items-center justify-center text-center px-8 select-none">
               <div className="text-5xl opacity-10 mb-5">⚡</div>
               <p className="text-gray-600 text-sm max-w-56 leading-relaxed">
-                Paste your code on the left, then click{' '}
-                <span className="text-neon-cyan font-semibold">Analyze & Fix</span>.
+                Paste your code on the left, then tap{' '}
+                <span className="text-neon-cyan font-semibold">Fix</span>.
               </p>
-              <div className="mt-8 space-y-2 text-xs text-gray-700">
+              <div className="mt-8 space-y-2 text-xs text-gray-700 hidden sm:block">
                 {[
                   ['⌘↵', 'Analyze & fix'],
                   ['⌘⇧C', 'Copy fixed code'],
@@ -315,7 +347,6 @@ function App() {
         )}
       </AnimatePresence>
 
-      {/* Toast */}
       <Toast message={toast} onDismiss={() => setToast(null)} />
     </div>
   );
