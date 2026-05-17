@@ -137,18 +137,17 @@ function App() {
 
         <div className="w-px h-5 bg-white/10" />
 
-        <ProjectSelector
-          projects={projects}
-          activeProjectId={activeProjectId}
-          onSwitch={setActiveProject}
-          onCreate={createProject}
-          onRename={renameProject}
-          onDelete={deleteProject}
-        />
-
-        <div className="w-px h-5 bg-white/10" />
-
-        <LanguageSelector language={language} onChange={setLanguage} />
+        <div className="flex items-center gap-2">
+          <ProjectSelector
+            projects={projects}
+            activeProjectId={activeProjectId}
+            onSwitch={setActiveProject}
+            onCreate={createProject}
+            onRename={renameProject}
+            onDelete={deleteProject}
+          />
+          <LanguageSelector language={language} onChange={setLanguage} />
+        </div>
 
         <div className="flex-1" />
 
